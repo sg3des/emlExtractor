@@ -35,7 +35,7 @@ sub openEml
 	}
 }
 
-my $attachment=0;
+
 sub explode
 {
 	my($buf, $boundary) = @_;
@@ -64,7 +64,6 @@ sub explode
 			mailText($part,$charset,$textType);
 		}
 	}
-	print "attachments: ".$attachment."\n";
 }
 
 
@@ -86,29 +85,37 @@ sub mailText{
 
 sub attachment
 {
-	$attachment++;
 	my($document, $filename, $type, $ext) = @_;
-	
-	print $filename."\n";
 	if($filename =~ /koi8-r/) {$charset = 'koi8-r'; $filename = str_replace('=?koi8-r','',$filename);}
 	if($filename =~ /windows-1251/) {$charset = 'windows-1251'; $filename = str_replace('=?windows-1251','',$filename);}
 
 	if($filename =~ /\?B\?/) {$quoted = 'base64'; $filename = str_replace('?B?','',$filename);}
 	if($filename =~ /\?Q\?/) {$quoted = 'qp'; $filename = str_replace('?Q?','',$filename);}
 
-	# $filename = str_replace('?=','',$filename);
-	$filename =~ s/[\)\(\"\'\=\?	]|filename|//gi;
-	if($quoted='base64'){$filename=decode_base64($filename);}
-	if($quoted='qp'){$filename=decode_qp($filename);}
+	$filename = str_replace('?=','',$filename);
+	$filename = str_replace('filename=','',$filename);
 
+	$filename = str_replace('"','',$filename);
+	$filename	=~ s/^\s+|\s+$//g;
+	$filename = str_replace(' ','_',$filename);
+	
+	$filename	=~ s/\r|\n//g;
+
+	# $filename =~ s/[\)\(\"\'\?]|filename|//gi;
+
+	if($quoted eq 'base64'){$filename=decode_base64($filename);}
+	if($quoted eq 'qp'){$filename=decode_qp($filename);}
 	$filename = decode($charset,$filename);
 	if($filename !~ m/$ext/){$filename = $filename.".".$ext;}
+	$filename =~ s/[^\w\.\s]//gi; #убираем непечатные символы
 
+	print $filename."\n";
 	$document = cropGarbage($document,$delimter);
 	if($type eq 'base64'){
 		$document = MIME::Base64::decode($document);
 	}
 	saveFile($filename,$document);
+
 	# if($filename =~ /.dat/){
 	# 	$exec = 'tnef --overwrite '.$filename;
 	# 	exec $exec;
@@ -205,7 +212,7 @@ sub cropGarbage
 my $fileNum=0;
 sub saveFile{
 	my ($filename,$document) = @_;
-	$filename =~ s/[^\w\.]//gi; #убираем непечатные символы
+	
 
 	$folder = str_replace('.eml','',$folder);
 	mkdir $folder;
@@ -247,7 +254,7 @@ sub str_replace
 	for(my $i=0; $i<$length - $target + 1; $i++) {
 		if(substr($string,$i,$target) eq $replace_this) {
 			$string = substr($string,0,$i) . $with_this . substr($string,$i+$target);
-			return $string; #Comment this if you what a global replace
+			# return $string; #Comment this if you what a global replace
 		}
 	}
 	return $string;
