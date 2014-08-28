@@ -1,24 +1,15 @@
 #emlExtractor
-Распаковщик eml файлов, написан на perl, используется ряд CPAN модулей:
 
-	use MIME::Base64;
-	use IO::File;
-	use Fcntl qw(:flock);
-	use Encode qw(decode encode);
-	use Convert::TNEF;
-	use Term::ANSIColor;
-	use MIME::QuotedPrint::Perl;
-	use File::Basename;
+Распаковщик eml файлов, написан на perl под linux.
 	
 ##USAGE:
 
 запускаем emlExtractor и через пробел eml файлы которые надо распаковать, в итоге получает вывод того что удалось распаковать.
 
-	$ path/to/emlExtractor.pl path/to/email.eml path/to/email.eml path/to/email.eml *N
+	$ emlExtractor path/to/email.eml path/to/email.eml path/to/email.eml*Nраз
+	
+для каждого eml файла будет создана директория куда упадут распакованные файлы.
 
-##INFORMATION
-
-в некоторых случаях, в eml письмах встречаются winmail.dat который содержит вложения и текст, я не стал писать свой велосипед на этот случай, так как с этой задачей прекрасно справляется приложение tnef.
 
 ##PREMISE
 
@@ -31,3 +22,17 @@ eml формат, это ужасный формат, каждый его соз
 
 Все это поставляется как есть, и не факт что что-то буду доделывать.
 
+##INFORMATION
+
+в некоторых случаях, в eml письмах встречаются winmail.dat который содержит вложения и текст, я не стал писать свой велосипед на этот случай, так как с этой задачей прекрасно справляется приложение tnef.
+
+используется ряд CPAN модулей:
+
+	use MIME::Base64;
+	use IO::File;
+	use Fcntl qw(:flock);
+	use Encode qw(decode encode);
+	use Convert::TNEF;
+	use Term::ANSIColor;
+	use MIME::QuotedPrint::Perl;
+	use File::Basename;
