@@ -6,9 +6,10 @@ use Encode qw(decode encode);
 use Convert::TNEF;
 use Term::ANSIColor;
 use MIME::QuotedPrint::Perl;
+use File::Basename;
 no warnings 'layer';
 
-
+my $folder;
 foreach $filePath(@ARGV){
 	openEml($filePath);
 }
@@ -16,8 +17,10 @@ foreach $filePath(@ARGV){
 my $delimter;
 sub openEml
 {
-	print color 'bold green';	print $filePath."\n";	print color 'reset';
 	my($path) = @_;
+	$folder = str_replace('.eml','',basename($path));
+	print color 'bold green';	print $path."\n";	print color 'reset';
+	
 	my $fh = new IO::File "< $path" or die "Cannot open $path : $!";
 	flock($fh,LOCK_SH);
 	binmode($fh);
@@ -203,10 +206,12 @@ sub cropGarbage
 	return $part;
 }
 
-sub saveFile
-{
+my $fileNum=0;
+sub saveFile{
 	my ($filename,$document) = @_;
-	my $sfh = new IO::File "> $filename" or die "Cannot open $filename : $!";
+	$filename =~ s/[^\w\.]//gi; #убираем непечатные символы
+	mkdir $folder;
+	my $sfh = new IO::File ">"."$folder/$filename" or die "Cannot open $filename : $!";
 	flock($sfh,LOCK_EX);
 	binmode($sfh);
 	print $sfh $document or die "Write to $filename failed: $!";

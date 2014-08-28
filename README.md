@@ -5,8 +5,10 @@
 	use IO::File;
 	use Fcntl qw(:flock);
 	use Encode qw(decode encode);
+	use Convert::TNEF;
 	use Term::ANSIColor;
 	use MIME::QuotedPrint::Perl;
+	use File::Basename;
 	
 ##USAGE:
 
