@@ -18,7 +18,7 @@ my $delimter;
 sub openEml
 {
 	my($path) = @_;
-	$folder = str_replace('.eml','',basename($path));
+	$folder = $path;
 	print color 'bold green';	print $path."\n";	print color 'reset';
 	
 	my $fh = new IO::File "< $path" or die "Cannot open $path : $!";
@@ -113,11 +113,11 @@ sub attachment
 		$document = MIME::Base64::decode($document);
 	}
 	saveFile($filename,$document);
-	if($filename =~ /.dat/){
-		$exec = './tnef --overwrite '.$filename;
-		exec $exec;
-	}
-	return true;
+	# if($filename =~ /.dat/){
+	# 	$exec = 'tnef --overwrite '.$filename;
+	# 	exec $exec;
+	# }
+	return;
 }
 
 sub searchDelimter
@@ -210,7 +210,10 @@ my $fileNum=0;
 sub saveFile{
 	my ($filename,$document) = @_;
 	$filename =~ s/[^\w\.]//gi; #убираем непечатные символы
+
+	$folder = str_replace('.eml','',$folder);
 	mkdir $folder;
+
 	my $sfh = new IO::File ">"."$folder/$filename" or die "Cannot open $filename : $!";
 	flock($sfh,LOCK_EX);
 	binmode($sfh);
