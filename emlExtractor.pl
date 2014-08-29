@@ -2,8 +2,7 @@
 use MIME::Base64;
 use IO::File;
 use Fcntl qw(:flock);
-use Encode qw(decode encode);
-use Convert::TNEF;
+use Encode; # qw(decode encode);
 use Term::ANSIColor;
 use MIME::QuotedPrint::Perl;
 use File::Basename;
@@ -67,7 +66,7 @@ sub explode
 		}
 		if(length($textType)>1){
 			print "body.".$textType."\n";
-			mailText($part,$charset,$textType);
+			mailText($part,$textType);
 		}
 	}
 	if($boundary){header($boundary);}
@@ -125,14 +124,14 @@ sub string_decode
 
 
 sub mailText{
-	my($part, $charset, $type) = @_;
+	my($part, $type) = @_;
 
 	$part = cropGarbage($part,$delimter);
 
 	@part = split($delimter,$part);pop @part;$part = join("",@part); #delete last line!
 
 	$part = decode_qp($part);
-	$part = decode($charset,$part);
+	$part = decode('windows-1251',$part);
 
 	if($type eq 'html'){$part = str_replace($charset,'utf-8',$part);}
 
