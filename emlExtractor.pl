@@ -10,11 +10,15 @@ use File::Basename;
 no warnings 'layer';
 
 my $folder;
+my $delimter;
+my $charset;
+my $quoted;
+
 foreach $filePath(@ARGV){
 	openEml($filePath);
 }
 
-my $delimter;
+
 sub openEml
 {
 	my($path) = @_;
@@ -29,9 +33,11 @@ sub openEml
 
 	while (read($fh,$buf,$buflen)) {
 		$delimter = searchDelimter($buf);
-		header($buf);
+		
 		my $boundary = getBoundary($buf);
 		explode($buf,$boundary);
+
+		# header($buf);
 	}
 }
 
@@ -50,21 +56,72 @@ sub explode
 			if($line =~ /text\/plain/)	{$textType = 'text';}
 			if($line =~ /text\/html/)		{$textType = 'html';}
 
-			if($line =~ /koi8-r/i)				{$charset = 'koi8-r';}
+			if($line =~ /koi8-r/i)			{$charset = 'koi8-r';}
 			if($line =~ /utf-8/i)				{$charset = 'utf-8';}
-			if($line =~ /windows-1251/i)	{$charset = 'windows-1251';}
+			if($line =~ /windows-1251/i){$charset = 'windows-1251';}
+
+			if($line =~ /boundary/i)		{$boundary = $part;}
 		}
 		if (length($filename)>1 && length($type)>1){
 			attachment($part,$filename,$type,$ext);
 		}
 		if(length($textType)>1){
-
 			print "body.".$textType."\n";
-
 			mailText($part,$charset,$textType);
 		}
 	}
+	if($boundary){header($boundary);}
 }
+
+sub header
+{
+	my($partHeader) = @_;
+	my %header;
+	foreach my $line (split m/\r|\n/, $partHeader){
+		if($line =~ m/^From:/i && $line =~ m/@/){$header{'from'}=$line;}
+		if($line =~ m/^To:/i  && $line =~ m/@/)	{$header{'to'}=$line;}
+		if($line =~ m/^Subject:/i)							{$header{'subject'}=$line;}
+		if($line =~ m/^Date:/i)									{$header{'date'}=$line;}
+	}
+
+	foreach $k (keys %header){
+		@replace = ('From: ','To: ','Subject: ','Date: ');
+		foreach $replace (@replace){
+			$header{$k} = str_replace($replace,'',$header{$k});
+		}
+		$header{$k} = string_decode($header{$k});
+		%result = (%result,$k.": ".$header{$k}."\n");
+	}
+	$header = join("",%result);
+	saveFile('eml.header',$header);
+	return;
+}
+
+sub string_decode
+{
+	my ($string) = @_;
+	my @result = ();
+	$email = '';
+
+	if($string =~ m/@/){
+		@email = ($string =~ m/(\<+[\w]+\@+[\w]+\.+[\w]+\>)/);
+		$email = join '',@email;
+		$string =~ s/$email//;
+	}
+
+	if($string =~ m/$charset/){
+			$string =~ s/[^\w\.\s\=\?\+\-]//gi; #убираем непечатные символы
+		$string =~ s/\=\?+$charset|\?B\?|\?\=//gi;
+
+		if($quoted eq 'base64'){$string=decode_base64($string);}
+		if($quoted eq 'qp'){$string=decode_qp($string);}
+		$string = decode($charset,$string);
+		
+	}
+	$string = $string." ".$email;
+	return $string;
+}
+
 
 
 sub mailText{
@@ -79,7 +136,7 @@ sub mailText{
 
 	if($type eq 'html'){$part = str_replace($charset,'utf-8',$part);}
 
-	$filename = "body.".$type;
+	$filename = $type.".".$type;
 	saveFile($filename,$part);
 }
 
@@ -140,28 +197,6 @@ sub search
 	return index($text,$what,$index);
 }
 
-sub header
-{
-	my($buf) = @_;
-	my %header;
-	foreach my $line (split m/\n+/, $buf){
-		if($line =~ m/^From:/i && $line =~ '@')	{$header{'from'}="$line";}
-		if($line =~ m/^To:/i  && $line =~ '@')	{$header{'to'}="$line";}
-		if($line =~ m/^Subject:/i)							{$header{'subject'}="$line";}
-		if($line =~ m/^Date:/i)									{$header{'date'}="$line";}
-	}
-	foreach $k (keys %header){
-		@replace = ('From: ','To: ','Subject: ','Date: ');
-		foreach $replace (@replace){
-			$header{$k} = str_replace($replace,'',$header{$k});
-		}
-		$header{$k} = decode_koi8r($header{$k});
-		%result = (%result,$k.": ".$header{$k}."\n");
-	}
-	$header = join("",%result);
-	saveFile('eml.header',$header);
-	return;
-}
 
 sub getBoundary
 {
@@ -214,7 +249,7 @@ sub saveFile{
 	my ($filename,$document) = @_;
 	
 
-	$folder = str_replace('.eml','',$folder);
+	$folder = str_replace('.eml','_eml',$folder);
 	mkdir $folder;
 
 	my $sfh = new IO::File ">"."$folder/$filename" or die "Cannot open $filename : $!";
@@ -225,20 +260,6 @@ sub saveFile{
 	return '$filename OK';
 }
 
-sub decode_koi8r
-{
-	my ($string)= @_;
-	my @result=();
-	foreach my $string (split ' ',$string){
-		if($string =~ /koi8-r/){
-			$string = str_replace('=?koi8-r?B?','',$string);
-			$string = decode_base64($string);
-			$string = decode('koi8-r',$string);
-		}
-		@result=(@result,$string);
-	}
-	return join ' ',@result;
-}
 
 
 
