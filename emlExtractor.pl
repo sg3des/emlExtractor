@@ -3,16 +3,28 @@ use MIME::Base64;
 use IO::File;
 use Fcntl qw(:flock);
 use Encode; # qw(decode encode);
+use Encode qw(:all);
+
+use Encode::Byte;
+use Encode::CN;
+use Encode::JP;
+use Encode::KR;
+use Encode::TW;
+
 use Term::ANSIColor;
 use MIME::QuotedPrint::Perl;
 use File::Basename;
+# use Text::Iconv;
+# use Convert::Cyrillic;
 no warnings 'layer';
 
 my $folder;
 my $delimter;
 my $charset;
-my $quoted;
 
+# my $TextIncov;
+
+print "\n";
 foreach $filePath(@ARGV){
 	openEml($filePath);
 }
@@ -38,6 +50,7 @@ sub openEml
 
 		# header($buf);
 	}
+	print "\n";
 }
 
 
@@ -59,7 +72,8 @@ sub explode
 			if($line =~ /utf-8/i)				{$charset = 'utf-8';}
 			if($line =~ /windows-1251/i){$charset = 'windows-1251';}
 
-			if($line =~ /boundary/i)		{$boundary = $part;}
+			# if($charset){$TextIconv = Text::Iconv->new($charset, 'utf-8')}
+			if($line =~ /boundary/i)		{if(!$cropHeader){$cropHeader=$part;}}
 		}
 		if (length($filename)>1 && length($type)>1){
 			attachment($part,$filename,$type,$ext);
@@ -69,7 +83,7 @@ sub explode
 			mailText($part,$textType);
 		}
 	}
-	if($boundary){header($boundary);}
+	if($cropHeader){header($cropHeader);}
 }
 
 sub header
@@ -92,7 +106,10 @@ sub header
 		%result = (%result,$k.": ".$header{$k}."\n");
 	}
 	$header = join("",%result);
-	saveFile('eml.header',$header);
+	if($header){
+		saveFile('eml.header',$header);
+		print "eml.header\n";
+	}
 	return;
 }
 
@@ -109,19 +126,25 @@ sub string_decode
 	}
 
 	if($string =~ m/$charset/){
-			$string =~ s/[^\w\.\s\=\?\+\-]//gi; #убираем непечатные символы
+		if($string =~ m/\?B\?/){$quoted = 'base64';}
+		if($string =~ m/\?Q\?/){$quoted = 'qp';}
+		# print "   ".$string."\n";
+			$string =~ s/[^\w\.\s\=\?\+\-\/]//gi; #убираем непечатные символы
+		
+
 		$string =~ s/\=\?+$charset|\?B\?|\?\=//gi;
+		
 
 		if($quoted eq 'base64'){$string=decode_base64($string);}
 		if($quoted eq 'qp'){$string=decode_qp($string);}
 		$string = decode($charset,$string);
-		
+		# $string = from_to($string, $charset, 'utf-8');
+		# $string = $TextIconv->convert($string);
+		# print " > ".$string." ".$charset." ".$quoted."\n";
 	}
 	$string = $string." ".$email;
 	return $string;
 }
-
-
 
 sub mailText{
 	my($part, $type) = @_;
@@ -131,7 +154,16 @@ sub mailText{
 	@part = split($delimter,$part);pop @part;$part = join("",@part); #delete last line!
 
 	$part = decode_qp($part);
-	$part = decode('windows-1251',$part);
+	$part = decode($charset,$part);
+
+	# $part = from_to($part, $charset, 'utf-8');
+	# $part = $TextIconv->convert($part);
+
+	# $testString = '1tPRINHu6ujw/+3o';
+	# $testString = decode_base64($testString);
+	# print decode($charset,$testString)."\n";
+	# print $test = ($TextIncov->convert($testString))."\n";
+	# print Convert::Cyrillic::cstocs('windows-1251', 'UTF8', $testString)."\n";
 
 	if($type eq 'html'){$part = str_replace($charset,'utf-8',$part);}
 
@@ -158,13 +190,12 @@ sub attachment
 	$filename	=~ s/\r|\n//g;
 
 	# $filename =~ s/[\)\(\"\'\?]|filename|//gi;
-
 	if($quoted eq 'base64'){$filename=decode_base64($filename);}
 	if($quoted eq 'qp'){$filename=decode_qp($filename);}
 	$filename = decode($charset,$filename);
-	if($filename !~ m/$ext/){$filename = $filename.".".$ext;}
-	$filename =~ s/[^\w\.\s]//gi; #убираем непечатные символы
 
+	$filename =~ s/[^\w\.\r ]//gi; #убираем непечатные символы
+	if($filename !~ m/$ext/){$filename = $filename.".".$ext;}
 	print $filename."\n";
 	$document = cropGarbage($document,$delimter);
 	if($type eq 'base64'){
