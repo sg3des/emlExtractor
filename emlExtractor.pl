@@ -174,11 +174,14 @@ sub mailText{
 sub attachment
 {
 	my($document, $filename, $type, $ext) = @_;
+	# print "   ".$filename." ".$ext."\n";
 	if($filename =~ /koi8-r/) {$charset = 'koi8-r'; $filename = str_replace('=?koi8-r','',$filename);}
 	if($filename =~ /windows-1251/) {$charset = 'windows-1251'; $filename = str_replace('=?windows-1251','',$filename);}
 
 	if($filename =~ /\?B\?/) {$quoted = 'base64'; $filename = str_replace('?B?','',$filename);}
 	if($filename =~ /\?Q\?/) {$quoted = 'qp'; $filename = str_replace('?Q?','',$filename);}
+	
+
 
 	$filename = str_replace('?=','',$filename);
 	$filename = str_replace('filename=','',$filename);
@@ -188,6 +191,7 @@ sub attachment
 	$filename = str_replace(' ','_',$filename);
 	
 	$filename	=~ s/\r|\n//g;
+	# print " > ".$filename."\n";
 
 	# $filename =~ s/[\)\(\"\'\?]|filename|//gi;
 	if($quoted eq 'base64'){$filename=decode_base64($filename);}
@@ -195,12 +199,13 @@ sub attachment
 	$filename = decode($charset,$filename);
 
 	$filename =~ s/[^\w\.\r ]//gi; #убираем непечатные символы
-	if($filename !~ m/$ext/){$filename = $filename.".".$ext;}
+	if($filename !~ m/\./){$filename = $filename.".".$ext;}
 	print $filename."\n";
 	$document = cropGarbage($document,$delimter);
 	if($type eq 'base64'){
 		$document = MIME::Base64::decode($document);
 	}
+
 	saveFile($filename,$document);
 
 	# if($filename =~ /.dat/){
