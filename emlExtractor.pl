@@ -51,14 +51,15 @@ sub openEml
 sub explode
 {
 	my($buf, $boundary) = @_;
+
 	$step=0;
 	
 	foreach $part (split $boundary, $buf){
 		$step++;
 		# print $part;
 		if($step==1){header($part);next;}
-		if($part =~ m/(^Content\-Type.*text\/plain;)/mgi){mailText($part,'text'); next;}
-		if($part =~ m/(^Content\-Type.*text\/html;)/mgi){mailText($part,'html'); next;}
+		if($part =~ m/(text\/plain;)/mgi){mailText($part,'text'); next;}
+		if($part =~ m/(text\/html;)/mgi){mailText($part,'html'); next;}
 		if($part =~ m/(^Content\-Disposition.*attachment;)/mgi){attachment($part); next;}
 
 	}
@@ -81,11 +82,16 @@ sub header
 sub headerField
 {
 	my($part,$type)=@_;
-	@part = split /[\n\r]/g, $part;
+	# $part =~ s/[\n\r]/\n/g;
+	# $part =~ s/\n\n/\n/g;
+	# print $part;
+	@part = split /[\r\n]/g, $part;
+
 	$field='';
 	for (my $num = 0; $num < $#part; $num++) {
 		if(@part[$num] =~ /^$type:/mgi){
 			$field .= string_decode(@part[$num])."\n";
+			# next;
 			_WHILE: while(){
 				$num++;
 				if(@part[$num]){
@@ -93,6 +99,7 @@ sub headerField
 						$field .= string_decode(@part[$num])."\n";
 					}else{last _WHILE;}
 				}
+				if($num>=$#part){last _WHILE;}
 			}
 		}
 	}
@@ -116,7 +123,14 @@ sub attachment
 	my($part) = @_;
 	@part = cropContent($part);
 	@content = content(@part[0]);
-	$filename = (@part[0] =~ m/.*filename="(.*)"/sgi)[0];
+	$header = @part[0];
+
+
+
+	$filename = ($header =~ m/filename="(.*)"/gi)[0]; #КАСТЫЛЬ!!!! 
+	if(!$filename){$filename = ($header =~ m/filename="(.*)"/sgi)[0];} #КАСТЫЛЬ!!!! 
+	# я бес понятия что не так с этой ругуляркой, НО иногда она пытется найти какую-то совсем далекую КАВЫЧКУ
+
 	$filename = string_decode($filename);
 
 	if($filename !~ m/\./){
