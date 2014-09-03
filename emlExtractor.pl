@@ -6,10 +6,7 @@ use Encode; # qw(decode encode);
 use Encode qw(:all);
 
 use Encode::Byte;
-use Encode::CN;
-use Encode::JP;
-use Encode::KR;
-use Encode::TW;
+
 
 use Term::ANSIColor;
 use MIME::QuotedPrint::Perl;
@@ -64,34 +61,53 @@ sub explode
 		if($part =~ m/(^Content\-Type.*text\/html;)/mgi){mailText($part,'html'); next;}
 		if($part =~ m/(^Content\-Disposition.*attachment;)/mgi){attachment($part); next;}
 
-		# if($part =~ m/^Content-Disposition:attachment;/mgi){attachment($part); next;}
-		# if($part =~ m/^Content-Type:text\/plain;/mgi){mailText($part,'text'); next;}
-		# if($part =~ m/^Content-Type:text\/html;/mgi){mailText($part,'html'); next;}
 	}
 }
+
 
 sub header
 {
 	my($part) = @_;
-	$header .= (($part =~ m/(^from:.*$)/mgi)[0])."\n";
-	$header .= (($part =~ m/(^to:.*$)/mgi)[0])."\n";
-	$header .= (($part =~ m/(^subject:.*$)/mgi)[0])."\n";
-	$header .= (($part =~ m/(^cc:.*$)/mgi)[0])."\n";
+	
+
+	$header .= "From: ".headerField($part,'from')."\n";
+	$header .= "To: ".headerField($part,'to')."\n";
+	$header .= "CC: ".headerField($part,'cc')."\n";
+	$header .= "Subject: ".headerField($part,'subject')."\n";
+
 	saveFile('eml.header',$header);
 	return;
 }
+sub headerField
+{
+	my($part,$type)=@_;
+	@part = split /[\n\r]/g, $part;
+	$field='';
+	for (my $num = 0; $num < $#part; $num++) {
+		if(@part[$num] =~ /^$type:/mgi){
+			$field .= string_decode(@part[$num])."\n";
+			_WHILE: while(){
+				$num++;
+				if(@part[$num]){
+					if(@part[$num] =~ m/^\t|^\s/mgi){
+						$field .= string_decode(@part[$num])."\n";
+					}else{last _WHILE;}
+				}
+			}
+		}
+	}
+	return $field;
+}
+
+
 sub mailText
 {
 	my($part,$type) = @_;
-	# @content = content($part);
 	@part = cropContent($part);
 	@content = content(@part[0]);
-
-
 	$part = absoluteDecode(@part[1],@content);
 	if($type eq 'html'){$part =~ s/@content[0]/utf-8/gi;}
 	$filename = $type.".".$type;
-	# print $filename;
 	saveFile($filename,$part);
 }
 
@@ -100,7 +116,7 @@ sub attachment
 	my($part) = @_;
 	@part = cropContent($part);
 	@content = content(@part[0]);
-	$filename = (@part[0] =~ m/filename="(.*)"/gi)[0];
+	$filename = (@part[0] =~ m/.*filename="(.*)"/sgi)[0];
 	$filename = string_decode($filename);
 
 	if($filename !~ m/\./){
@@ -110,7 +126,7 @@ sub attachment
 
 	if(@content){$part = absoluteDecode(@part[1],@content);}
 	saveFile($filename,$part);
-	
+
 	return;
 }
 sub content
@@ -147,12 +163,7 @@ sub cropContent
 {
 	my($part) = @_;
 
-	# print $part;
-	# $crop = index($part,"eJ8");
-	# if($crop+1){substr($part,0,$crop)='';}
-
 	if(index($part,"\r")+1){$delimter="\r"; $plus=1;}else{$delimter="\n";$plus=0;}
-
 
 	my $num=0;
 	my $cropLength=0;
@@ -169,26 +180,16 @@ sub cropContent
 			last _CROP;
 		}
 	}
-	# print $cropLength."\n";
 	$content = substr($part,0,$cropLength+$plus);  #плюс нужен изза разновидности переноса строк 
 	substr($part,0,$cropLength+$plus)='';
-
-
 	return ($content,$part);
-
-
-	# $crop = index($part,$delimter,$startCrop);
-
-	# print $startCrop." ".$crop."\n";
-	# $part =~ s/(^Content.*$)|(^\t.*$)//mgi; # убираем все строки которые начинаются со слова Content или с таба скорее всего это заголовок
-	# $part =~ s/\r$\r$|^\n^\n//mgi; #убираем двойные переносы строк
-
-	# return $part;
 }
 
 sub string_decode
 {
 	my ($string) = @_;
+	$string =~ s/from:|to:|subject:|cc://gi;
+	# $string = ($string =~ m/.*:(.*)/gi)[0];
 	my @result = ();
 	$email = '';
 	if($string =~ m/@/){
@@ -196,8 +197,8 @@ sub string_decode
 		$email = join '',@email;
 		$string =~ s/$email//;
 	}
-	if($string =~ /windows-1251/) {$charset = 'windows-1251';}
-	if($string =~ /koi8-r/) {$charset = 'koi8-r';}
+	if($string =~ /windows-1251/i) {$charset = 'windows-1251';}
+	if($string =~ /koi8-r/i) {$charset = 'koi8-r';}
 	if($string =~ m/$charset/){
 		if($string =~ m/\?B\?/){$quoted = 'base64';}
 		if($string =~ m/\?Q\?/){$quoted = 'qp';}
