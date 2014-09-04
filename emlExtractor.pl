@@ -4,7 +4,7 @@ use IO::File;
 use Fcntl qw(:flock);
 use Encode; # qw(decode encode);
 use Encode qw(:all);
-
+use Convert::TNEF;
 use Encode::Byte;
 
 
@@ -41,7 +41,7 @@ sub openEml
 
 	while (read($fh,$buf,$buflen)) {
 		$boundary = getBoundary($buf);
-
+		# print $boundary."\n";
 		if(!$boundary){$boundary = 'Content-Type:';}
 		explode($buf,$boundary);
 	}
@@ -51,7 +51,7 @@ sub openEml
 sub explode
 {
 	my($buf, $boundary) = @_;
-	print $boundary."\n";
+	# print $boundary."\n";
 	$step=0;
 	
 	foreach $part (split /$boundary/, $buf){
@@ -69,7 +69,6 @@ sub explode
 sub header
 {
 	my($part) = @_;
-	
 
 	$header .= "From: ".headerField($part,'from')."\n";
 	$header .= "To: ".headerField($part,'to')."\n";
@@ -82,11 +81,7 @@ sub header
 sub headerField
 {
 	my($part,$type)=@_;
-	# $part =~ s/[\n\r]/\n/g;
-	# $part =~ s/\n\n/\n/g;
-	# print $part;
 	@part = split /[\r\n]/g, $part;
-
 	$field='';
 	for (my $num = 0; $num < $#part; $num++) {
 		if(@part[$num] =~ /^$type:/mgi){
@@ -103,6 +98,8 @@ sub headerField
 			}
 		}
 	}
+	$field =~ s/\n/;/g;
+	$field =~ s/;$//g;
 	return $field;
 }
 
@@ -141,7 +138,8 @@ sub attachment
 	}
 
 	if(@content){$part = absoluteDecode(@part[1],@content);}
-	# print $part."\n";
+	else{$part = @part[1];}
+
 	saveFile($filename,$part);
 
 	return;
@@ -170,6 +168,9 @@ sub getBoundary
 {
 	my($buf) = @_;
 	@boundary = ($buf =~ m/\t+boundary="(.*)"/gi);
+	foreach $boundary(@boundary){
+		$boundary="--".$boundary;
+	}
 	$boundary = join '|',@boundary;
 	if(!$boundary){return;}
 	return $boundary;
