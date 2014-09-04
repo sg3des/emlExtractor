@@ -99,7 +99,7 @@ sub headerField
 						$field .= string_decode(@part[$num])."\n";
 					}else{last _WHILE;}
 				}
-				if($num>=$#part){last _WHILE;}
+				if($num>=$#part){last _WHILE;} 
 			}
 		}
 	}
@@ -129,7 +129,7 @@ sub attachment
 
 	$filename = ($header =~ m/name="(.*)"/gi)[0]; #КАСТЫЛЬ!!!! 
 	if(!$filename){$filename = ($header =~ m/name="(.*)"/sgi)[0];} #КАСТЫЛЬ!!!! 
-	# я бес понятия что не так с этой ругуляркой, НО иногда она пытется найти какую-то совсем далекую КАВЫЧКУ
+	# я без понятия что не так с этой ругуляркой, НО иногда она пытется найти какую-то совсем далекую КАВЫЧКУ
 
 	$filename = string_decode($filename);
 
