@@ -51,16 +51,16 @@ sub openEml
 sub explode
 {
 	my($buf, $boundary) = @_;
-
+	print $boundary."\n";
 	$step=0;
 	
-	foreach $part (split $boundary, $buf){
+	foreach $part (split /$boundary/, $buf){
 		$step++;
 		# print $part;
 		if($step==1){header($part);next;}
-		if($part =~ m/(text\/plain;)/mgi){mailText($part,'text'); next;}
-		if($part =~ m/(text\/html;)/mgi){mailText($part,'html'); next;}
-		if($part =~ m/(^Content\-Disposition.*attachment;)/mgi){attachment($part); next;}
+		if($part =~ m/(text\/plain)/mgi){mailText($part,'text'); next;}
+		if($part =~ m/(text\/html)/mgi){mailText($part,'html'); next;}
+		if($part =~ m/(attachment)/mgi){attachment($part); next;}
 
 	}
 }
@@ -127,8 +127,8 @@ sub attachment
 
 
 
-	$filename = ($header =~ m/filename="(.*)"/gi)[0]; #КАСТЫЛЬ!!!! 
-	if(!$filename){$filename = ($header =~ m/filename="(.*)"/sgi)[0];} #КАСТЫЛЬ!!!! 
+	$filename = ($header =~ m/name="(.*)"/gi)[0]; #КАСТЫЛЬ!!!! 
+	if(!$filename){$filename = ($header =~ m/name="(.*)"/sgi)[0];} #КАСТЫЛЬ!!!! 
 	# я бес понятия что не так с этой ругуляркой, НО иногда она пытется найти какую-то совсем далекую КАВЫЧКУ
 
 	$filename = string_decode($filename);
@@ -166,9 +166,9 @@ sub absoluteDecode
 sub getBoundary
 {
 	my($buf) = @_;
-	$boundary = ($buf =~ m/\t+boundary="(.*)"/i)[0];
+	@boundary = ($buf =~ m/\t+boundary="(.*)"/gi);
+	$boundary = join '|',@boundary;
 	if(!$boundary){return;}
-	$boundary = "--".substr($boundary,0,10); #берем только первые 10 симоволов, это нужно потому что бывает несколько баундарев и обычно различаются они где-то не в начале.
 	return $boundary;
 }
 
@@ -202,26 +202,25 @@ sub cropContent
 sub string_decode
 {
 	my ($string) = @_;
+
 	$string =~ s/from:|to:|subject:|cc://gi;
 	# $string = ($string =~ m/.*:(.*)/gi)[0];
-	my @result = ();
 	$email = '';
 	if($string =~ m/@/){
 		@email = ($string =~ m/(\<+[\w]+\@+[\w]+\.+[\w]+\>)/);
 		$email = join '',@email;
 		$string =~ s/$email//;
 	}
-	if($string =~ /windows-1251/i) {$charset = 'windows-1251';}
-	if($string =~ /koi8-r/i) {$charset = 'koi8-r';}
-	if($string =~ m/$charset/){
-		if($string =~ m/\?B\?/){$quoted = 'base64';}
-		if($string =~ m/\?Q\?/){$quoted = 'qp';}
-		$string =~ s/[^\w\.\s\=\?\+\-\/]//gi; #убираем непечатные символы
-		$string =~ s/\=\?+$charset|\?B\?|\?\=//gi;
-		if($quoted eq 'base64'){$string=decode_base64($string);}
-		if($quoted eq 'qp'){$string=decode_qp($string);}
-		if($charset){$string = decode($charset,$string);}
-	}
+	@string = ($string =~ m/.*\=\?(.*)\?(.)\?(.*)\?\=.*/gi);
+	$charset = @string[0];
+	$encoding = @string[1];
+	$string = @string[2];
+	# print $charset."?".$encoding."?".$string."\n";
+
+	if($encoding eq 'B'){$string=decode_base64($string);}
+	if($encoding eq 'Q'){$string=decode_qp($string);}
+	if($charset){$string = decode($charset,$string);}
+	
 	if($email){$string = $string." ".$email;}
 	return $string;
 }
