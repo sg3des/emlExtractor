@@ -74,33 +74,9 @@ sub header
 	$header .= "To: ".headerField($part,'to')."\n";
 	$header .= "CC: ".headerField($part,'cc')."\n";
 	$header .= "Subject: ".headerField($part,'subject')."\n";
-
+	$header .= "Date: ".headerField($part,'date')."\n";
 	saveFile('eml.header',$header);
 	return;
-}
-sub headerField
-{
-	my($part,$type)=@_;
-	@part = split /[\r\n]/g, $part;
-	$field='';
-	for (my $num = 0; $num < $#part; $num++) {
-		if(@part[$num] =~ /^$type:/mgi){
-			$field .= string_decode(@part[$num])."\n";
-			# next;
-			_WHILE: while(){
-				$num++;
-				if(@part[$num]){
-					if(@part[$num] =~ m/^\t|^\s/mgi){
-						$field .= string_decode(@part[$num])."\n";
-					}else{last _WHILE;}
-				}
-				if($num>=$#part){last _WHILE;} 
-			}
-		}
-	}
-	$field =~ s/\n/;/g;
-	$field =~ s/;$//g;
-	return $field;
 }
 
 
@@ -126,12 +102,15 @@ sub attachment
 
 
 
-	$filename = ($header =~ m/name="(.*)"/gi)[0]; #КАСТЫЛЬ!!!! 
-	if(!$filename){$filename = ($header =~ m/name="(.*)"/sgi)[0];} #КАСТЫЛЬ!!!! 
+	# $filename = ($header =~ m/.*name="(.*)".*/gi)[0]; #КАСТЫЛЬ!!!! 
+	$filename = ($header =~ m/.*name="(.*)".*/sgi)[0];
+	# if(!$filename){$filename = ($header =~ m/.*name="(.*)".*/sgi)[0];} #КАСТЫЛЬ!!!! 
+
 	# я без понятия что не так с этой ругуляркой, НО иногда она пытется найти какую-то совсем далекую КАВЫЧКУ
 	# print $filename."\n";
 	$filename = string_decode($filename);
-
+	$filename =~ s/[\r\n]//g;
+	# print $filename."\n";
 	if($filename !~ m/\./){
 		$ext = (@part[0] =~ m/^Content-Type:.*\/(.*);/mgi)[0];
 		$filename.=".".$ext;
@@ -207,31 +186,67 @@ sub string_decode
 {
 	my ($string) = @_;
 	$string =~ s/from:|to:|subject:|cc://gi;
+	$string =~ s/^\s//g;
 	# $string = ($string =~ m/.*:(.*)/gi)[0];
 	$email = '';
 
-	if($string =~ m/@/){
-		# $email = ($string =~ m/.*(\<+[\w]+\@+[\w]+\.+[\w]+\>).*/)[0];
-		$email = ($string =~ m/.*(<.*>).*/gi)[0];
-		# $email = join '',@email;
+	@string = split /[\r\n]/,$string;
+	foreach $line (@string){
+		$encoding='';$charset='';
+		if($line =~ m/@/){
+			# $email = ($string =~ m/.*(\<+[\w]+\@+[\w]+\.+[\w]+\>).*/)[0];
+			$email = ($line =~ m/.*(<.*>).*/gi)[0];
+			# $email = join '',@email;
 
-		$string =~ s/$email//;
+			$line =~ s/$email//;
+		}
+
+
+		if($line =~ m/\?/){
+		@line = ($line =~ m/.*\=\?(.*)\?(.)\?(.*)\?\=.*/gi);
+			$charset = @line[0];
+			$encoding = @line[1];
+			$line = @line[2];
+		}
+		if($encoding eq 'B'){$line=decode_base64($line);}
+		if($encoding eq 'Q'){$line=decode_qp($line);}
+		if($charset){$line = decode($charset,$line);}
+		
+		if($email){$line = $line." ".$email;}
 	}
 
-	if($string =~ m/\?/){
-	@string = ($string =~ m/.*\=\?(.*)\?(.)\?(.*)\?\=.*/gi);
-		$charset = @string[0];
-		$encoding = @string[1];
-		$string = @string[2];
-	}
 	# print $charset."?".$encoding."?".$string."\n";
 
-	if($encoding eq 'B'){$string=decode_base64($string);}
-	if($encoding eq 'Q'){$string=decode_qp($string);}
-	if($charset){$string = decode($charset,$string);}
-	
-	if($email){$string = $string." ".$email;}
-	return $string;
+
+	return join "\n",@string;
+}
+
+sub headerField
+{
+	my($part,$type)=@_;
+	@part = split /[\r\n]/g, $part;
+	$field='';
+	for (my $num = 0; $num < $#part; $num++) {
+		if(@part[$num] =~ /^$type:/mgi){
+			$field .= string_decode(@part[$num])."\n";
+			# print $field."\n";
+			# next;
+			_WHILE: while(){
+				$num++;
+				if(@part[$num]){
+					if(@part[$num] =~ m/^\t|^\s/mgi){
+
+						$field .= string_decode(@part[$num])."\n";
+					}else{last _WHILE;}
+				}
+				if($num>=$#part){last _WHILE;} 
+			}
+		}
+	}
+
+	$field =~ s/\n/;/g;
+	$field =~ s/;$//g;
+	return $field;
 }
 
 sub cropGarbage
