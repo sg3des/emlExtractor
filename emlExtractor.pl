@@ -206,15 +206,18 @@ sub cropContent
 sub string_decode
 {
 	my ($string) = @_;
-
 	$string =~ s/from:|to:|subject:|cc://gi;
 	# $string = ($string =~ m/.*:(.*)/gi)[0];
 	$email = '';
+
 	if($string =~ m/@/){
-		@email = ($string =~ m/(\<+[\w]+\@+[\w]+\.+[\w]+\>)/);
-		$email = join '',@email;
+		# $email = ($string =~ m/.*(\<+[\w]+\@+[\w]+\.+[\w]+\>).*/)[0];
+		$email = ($string =~ m/.*(<.*>).*/gi)[0];
+		# $email = join '',@email;
+
 		$string =~ s/$email//;
 	}
+
 	if($string =~ m/\?/){
 	@string = ($string =~ m/.*\=\?(.*)\?(.)\?(.*)\?\=.*/gi);
 		$charset = @string[0];
