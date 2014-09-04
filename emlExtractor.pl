@@ -2,31 +2,22 @@
 use MIME::Base64;
 use IO::File;
 use Fcntl qw(:flock);
-use Encode; # qw(decode encode);
+use Encode;
 use Encode qw(:all);
-use Convert::TNEF;
 use Encode::Byte;
 
 
 use Term::ANSIColor;
 use MIME::QuotedPrint::Perl;
 use File::Basename;
-# use Text::Iconv;
-# use Convert::Cyrillic;
 no warnings 'layer';
 
 my $folder;
-my $delimter;
-my $charset;
-
-# my $TextIncov;
 
 print "\n";
 foreach $filePath(@ARGV){
-	# if(length($filePath)<=1){return;}
 	openEml($filePath);
 }
-
 
 sub openEml
 {
@@ -41,7 +32,6 @@ sub openEml
 
 	while (read($fh,$buf,$buflen)) {
 		$boundary = getBoundary($buf);
-		# print $boundary."\n";
 		if(!$boundary){$boundary = 'Content-Type:';}
 		explode($buf,$boundary);
 	}
@@ -51,17 +41,13 @@ sub openEml
 sub explode
 {
 	my($buf, $boundary) = @_;
-	# print $boundary."\n";
 	$step=0;
-	
 	foreach $part (split /$boundary/, $buf){
 		$step++;
-		# print $part;
 		if($step==1){header($part);next;}
 		if($part =~ m/(text\/plain)/mgi){mailText($part,'text'); next;}
 		if($part =~ m/(text\/html)/mgi){mailText($part,'html'); next;}
 		if($part =~ m/(attachment)/mgi){attachment($part); next;}
-
 	}
 }
 
@@ -69,7 +55,6 @@ sub explode
 sub header
 {
 	my($part) = @_;
-
 	$header .= "From: ".headerField($part,'from')."\n";
 	$header .= "To: ".headerField($part,'to')."\n";
 	$header .= "CC: ".headerField($part,'cc')."\n";
@@ -78,7 +63,6 @@ sub header
 	saveFile('eml.header',$header);
 	return;
 }
-
 
 sub mailText
 {
@@ -98,31 +82,19 @@ sub attachment
 	@part = cropContent($part);
 	@content = content(@part[0]);
 	$header = @part[0];
-
-
-
-
-	# $filename = ($header =~ m/.*name="(.*)".*/gi)[0]; #КАСТЫЛЬ!!!! 
 	$filename = ($header =~ m/.*name="(.*)".*/sgi)[0];
-	# if(!$filename){$filename = ($header =~ m/.*name="(.*)".*/sgi)[0];} #КАСТЫЛЬ!!!! 
-
-	# я без понятия что не так с этой ругуляркой, НО иногда она пытется найти какую-то совсем далекую КАВЫЧКУ
-	# print $filename."\n";
 	$filename = string_decode($filename);
 	$filename =~ s/[\r\n]//g;
-	# print $filename."\n";
 	if($filename !~ m/\./){
 		$ext = (@part[0] =~ m/^Content-Type:.*\/(.*);/mgi)[0];
 		$filename.=".".$ext;
 	}
-
 	if(@content){$part = absoluteDecode(@part[1],@content);}
 	else{$part = @part[1];}
-
 	saveFile($filename,$part);
-
 	return;
 }
+
 sub content
 {
 	my($part) = @_;
@@ -130,6 +102,7 @@ sub content
 	$encoding= ($part =~ m/^Content-Transfer-Encoding:(.*)$/mgi)[0];
 	return ($charset,$encoding);
 }
+
 sub absoluteDecode
 {
 	my($part,@content) = @_;
@@ -187,21 +160,15 @@ sub string_decode
 	my ($string) = @_;
 	$string =~ s/from:|to:|subject:|cc://gi;
 	$string =~ s/^\s//g;
-	# $string = ($string =~ m/.*:(.*)/gi)[0];
 	$email = '';
 
 	@string = split /[\r\n]/,$string;
 	foreach $line (@string){
 		$encoding='';$charset='';
 		if($line =~ m/@/){
-			# $email = ($string =~ m/.*(\<+[\w]+\@+[\w]+\.+[\w]+\>).*/)[0];
 			$email = ($line =~ m/.*(<.*>).*/gi)[0];
-			# $email = join '',@email;
-
 			$line =~ s/$email//;
 		}
-
-
 		if($line =~ m/\?/){
 		@line = ($line =~ m/.*\=\?(.*)\?(.)\?(.*)\?\=.*/gi);
 			$charset = @line[0];
@@ -214,10 +181,6 @@ sub string_decode
 		
 		if($email){$line = $line." ".$email;}
 	}
-
-	# print $charset."?".$encoding."?".$string."\n";
-
-
 	return join "\n",@string;
 }
 
