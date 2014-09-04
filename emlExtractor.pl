@@ -121,16 +121,18 @@ sub mailText
 sub attachment
 {
 	my($part) = @_;
+
 	@part = cropContent($part);
 	@content = content(@part[0]);
 	$header = @part[0];
 
 
 
+
 	$filename = ($header =~ m/name="(.*)"/gi)[0]; #КАСТЫЛЬ!!!! 
 	if(!$filename){$filename = ($header =~ m/name="(.*)"/sgi)[0];} #КАСТЫЛЬ!!!! 
 	# я без понятия что не так с этой ругуляркой, НО иногда она пытется найти какую-то совсем далекую КАВЫЧКУ
-
+	# print $filename."\n";
 	$filename = string_decode($filename);
 
 	if($filename !~ m/\./){
@@ -139,6 +141,7 @@ sub attachment
 	}
 
 	if(@content){$part = absoluteDecode(@part[1],@content);}
+	# print $part."\n";
 	saveFile($filename,$part);
 
 	return;
@@ -211,10 +214,12 @@ sub string_decode
 		$email = join '',@email;
 		$string =~ s/$email//;
 	}
+	if($string =~ m/\?/){
 	@string = ($string =~ m/.*\=\?(.*)\?(.)\?(.*)\?\=.*/gi);
-	$charset = @string[0];
-	$encoding = @string[1];
-	$string = @string[2];
+		$charset = @string[0];
+		$encoding = @string[1];
+		$string = @string[2];
+	}
 	# print $charset."?".$encoding."?".$string."\n";
 
 	if($encoding eq 'B'){$string=decode_base64($string);}
