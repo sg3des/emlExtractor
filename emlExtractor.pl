@@ -32,6 +32,7 @@ sub openEml
 
 	while (read($fh,$buf,$buflen)) {
 		$boundary = getBoundary($buf);
+		print $boundary."\n";
 		if(!$boundary){$boundary = 'Content-Type:';}
 		explode($buf,$boundary);
 	}
@@ -119,7 +120,7 @@ sub absoluteDecode
 sub getBoundary
 {
 	my($buf) = @_;
-	@boundary = ($buf =~ m/\t+boundary="(.*)"/gi);
+	@boundary = ($buf =~ m/[\t\s]+boundary="(.*)"/gi);
 	foreach $boundary(@boundary){
 		$boundary="--".$boundary;
 	}
