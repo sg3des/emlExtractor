@@ -111,7 +111,7 @@ sub absoluteDecode
 
 	if($encoding=~ m/base64/i){$part=decode_base64($part);}
 	if($encoding=~ m/quoted-printable/i){$part=decode_qp($part);}
-	if($charset){$part=decode($charset,$part);}
+	if($charset && !$charset=~/utf\-8/i){$part=decode($charset,$part);}
 
 	return $part;
 }
