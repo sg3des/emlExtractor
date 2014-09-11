@@ -32,7 +32,6 @@ sub openEml
 
 	while (read($fh,$buf,$buflen)) {
 		$boundary = getBoundary($buf);
-		print $boundary."\n";
 		if(!$boundary){$boundary = 'Content-Type:';}
 		explode($buf,$boundary);
 	}
@@ -121,8 +120,9 @@ sub getBoundary
 {
 	my($buf) = @_;
 	@boundary = ($buf =~ m/[\t\s]+boundary="(.*)"/gi);
+
 	foreach $boundary(@boundary){
-		$boundary="--".$boundary;
+		$boundary="--".quotemeta($boundary);
 	}
 	$boundary = join '|',@boundary;
 	if(!$boundary){return;}
