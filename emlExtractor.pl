@@ -99,7 +99,7 @@ sub attachment
 sub content
 {
 	my($part) = @_;
-	$charset = ($part =~ m/charset="(.*)"/mgi)[0];
+	$charset = ($part =~ m/charset="?(.*)"?/mgi)[0];
 	$encoding= ($part =~ m/^Content-Transfer-Encoding:(.*)$/mgi)[0];
 	return ($charset,$encoding);
 }
@@ -109,7 +109,6 @@ sub absoluteDecode
 	my($part,@content) = @_;
 	$charset = @content[0];
 	$encoding = @content[1];
-		# print $charset." ".$encoding."\n";
 	if($encoding=~ m/base64/i){$part=decode_base64($part);}
 	if($encoding=~ m/quoted-printable/i){$part=decode_qp($part); }
 	if($charset && $charset!~m/utf/i){$part=decode($charset,$part);}
