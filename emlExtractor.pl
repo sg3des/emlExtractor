@@ -69,6 +69,7 @@ sub mailText
 	my($part,$type) = @_;
 	@part = cropContent($part);
 	@content = content(@part[0]);
+
 	$part = absoluteDecode(@part[1],@content);
 	if($type eq 'html'){$part =~ s/@content[0]/utf-8/gi;}
 	$filename = $type.".".$type;
@@ -108,11 +109,10 @@ sub absoluteDecode
 	my($part,@content) = @_;
 	$charset = @content[0];
 	$encoding = @content[1];
-
+		# print $charset." ".$encoding."\n";
 	if($encoding=~ m/base64/i){$part=decode_base64($part);}
-	if($encoding=~ m/quoted-printable/i){$part=decode_qp($part);}
-	if($charset && !$charset=~/utf\-8/i){$part=decode($charset,$part);}
-
+	if($encoding=~ m/quoted-printable/i){$part=decode_qp($part); }
+	if($charset && $charset!~m/utf/i){$part=decode($charset,$part);}
 	return $part;
 }
 
