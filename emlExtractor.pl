@@ -51,7 +51,6 @@ sub explode
 	}
 }
 
-
 sub header
 {
 	my($part) = @_;
@@ -67,48 +66,64 @@ sub header
 sub mailText
 {
 	my($part,$type) = @_;
-	@part = cropContent($part);
-	@content = content(@part[0]);
+	my @part = cropContent($part);
+	my @content = content(@part[0]);
+	my $part = absoluteDecode(@part[1],@content);
 
-	$part = absoluteDecode(@part[1],@content);
 	if($type eq 'html'){$part =~ s/@content[0]/utf-8/gi;}
-	$filename = $type.".".$type;
+	my $filename = $type.".".$type;
 	saveFile($filename,$part);
 }
 
 sub attachment
 {
 	my($part) = @_;
-
-	@part = cropContent($part);
-	@content = content(@part[0]);
-	$header = @part[0];
-	$filename = ($header =~ m/.*name="(.*)".*/sgi)[0];
-	$filename = string_decode($filename);
-	$filename =~ s/[\r\n]//g;
-	if($filename !~ m/\./){
-		$ext = (@part[0] =~ m/^Content-Type:.*\/(.*);/mgi)[0];
-		$filename.=".".$ext;
-	}
-	if(@content){$part = absoluteDecode(@part[1],@content);}
-	else{$part = @part[1];}
-	saveFile($filename,$part);
+	my @part = cropContent($part);
+	my @content = content(@part[0]);
+	if(@content){$text = absoluteDecode(@part[1],@content);}
+	else{$text = @part[1];}
+	saveFile(@content[2],$text);
 	return;
+}
+
+sub stringCollect
+{
+	my($part2,$type) = @_;
+	@part = split /[\r\n]/g, $part2;
+	$field='';
+	_FOR: for (my $num = 0; $num <= $#part; $num++) {
+		if($str = (@part[$num] =~ m/$type/mi)[0]){
+			$field .= string_decode($str);
+			if(@part[$num] =~ m/;$/m){return $field;}
+			_WHILE: while(){
+				$num++;
+				if(@part[$num]){
+					if(@part[$num] =~ m/^\t|^\s/mi){
+
+						$field .= string_decode(@part[$num]);
+					}else{last _WHILE;}
+				}
+				if($num>=$#part){last _WHILE;} 
+			}
+		}
+	}
+	return $field;
 }
 
 sub content
 {
 	my($part) = @_;
-	$charset = ($part =~ m/charset="?([a-zA-Z0-9\-]*)"?/mgi)[0];
-	$encoding= ($part =~ m/^Content-Transfer-Encoding:(.*)$/mgi)[0];
-	return ($charset,$encoding);
+	my $charset = stringCollect($part,'charset="?([a-zA-Z0-9\-]*)"?');
+	my $encoding = stringCollect($part,'encoding:\s?(.*)');
+	my $filename = stringCollect($part,'filename="?(.*[^"])"?');
+	return ($charset,$encoding,$filename);
 }
 
 sub absoluteDecode
 {
 	my($part,@content) = @_;
-	$charset = @content[0];
-	$encoding = @content[1];
+	my $charset = @content[0];
+	my $encoding = @content[1];
 	if($encoding=~ m/base64/i){$part=decode_base64($part);}
 	if($encoding=~ m/quoted-printable/i){$part=decode_qp($part);}
 	if($charset && $charset!~m/utf/i){$part=decode($charset,$part);}
@@ -150,7 +165,9 @@ sub cropContent
 			last _CROP;
 		}
 	}
-	$content = substr($part,0,$cropLength+$plus);  #плюс нужен изза разновидности переноса строк 
+		
+	my $content = substr($part,0,$cropLength+$plus);  #плюс нужен изза разновидности переноса строк 
+
 	substr($part,0,$cropLength+$plus)='';
 	return ($content,$part);
 }
@@ -159,29 +176,30 @@ sub string_decode
 {
 	my ($string) = @_;
 	$string =~ s/from:|to:|subject:|cc://gi;
-	$string =~ s/^\s//g;
 	$email = '';
 
 	@string = split /[\r\n]/,$string;
 	foreach $line (@string){
-		$encoding='';$charset='';
+		$str_encoding='';$str_charset='';
 		if($line =~ m/@/){
 			$email = ($line =~ m/.*(<.*>).*/gi)[0];
 			$line =~ s/$email//;
 		}
 		if($line =~ m/\?/){
 		@line = ($line =~ m/.*\=\?(.*)\?(.)\?(.*)\?\=.*/gi);
-			$charset = @line[0];
-			$encoding = @line[1];
+			$str_charset = @line[0];
+			$str_encoding = @line[1];
 			$line = @line[2];
 		}
-		if($encoding eq 'B'){$line=decode_base64($line);}
-		if($encoding eq 'Q'){$line=decode_qp($line);}
-		if($charset){$line = decode($charset,$line);}
+		if($str_encoding eq 'B'){$line=decode_base64($line);}
+		if($str_encoding eq 'Q'){$line=decode_qp($line);}
+		if($str_charset){$line = decode($str_charset,$line);}
 		
 		if($email){$line = $line." ".$email;}
+		$line =~ s/^\s*|\s*$|\r*|\n*|\t//g;
+		# print "   > ".$line."\n";
 	}
-	return join "\n",@string;
+	return join "",@string;
 }
 
 sub headerField
