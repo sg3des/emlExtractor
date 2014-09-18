@@ -5,6 +5,10 @@ use Fcntl qw(:flock);
 use Encode;
 use Encode qw(:all);
 use Encode::Byte;
+use Encode::CN;
+use Encode::JP;
+use Encode::KR;
+use Encode::TW;
 
 
 use Term::ANSIColor;
@@ -23,6 +27,9 @@ sub openEml
 {
 	my($path) = @_;
 	$folder = $path;
+	$folder =~ s/\.eml/_eml/gi;
+	mkdir $folder;
+
 	print color 'bold green';	print $path."\n";	print color 'reset';
 	my $fh = new IO::File "< $path" or die "Cannot open $path : $!";
 	flock($fh,LOCK_SH);
@@ -41,14 +48,20 @@ sub openEml
 sub explode
 {
 	my($buf, $boundary) = @_;
-	$step=0;
-	foreach $part (split /$boundary/, $buf){
+	my $step=0;
+	# print $boundary."\n";
+	foreach $part (split /$boundary/i, $buf){
+		# print $part."\n";
 		$step++;
-		if($step==1){header($part);next;}
+		if($step==1){header($part);  next;}
 		if($part =~ m/(text\/plain)/mgi){mailText($part,'text'); next;}
 		if($part =~ m/(text\/html)/mgi){mailText($part,'html'); next;}
+		if($part =~ m/(filename)/mgi){attachment($part); next;}
 		if($part =~ m/(attachment)/mgi){attachment($part); next;}
+		if($part =~ m/(description)/mgi){attachment($part); next;}
+		if($part =~ m/(name)/mgi){attachment($part); next;}
 	}
+
 }
 
 sub header
@@ -66,6 +79,7 @@ sub header
 sub mailText
 {
 	my($part,$type) = @_;
+	# print $part."\n";
 	my @part = cropContent($part);
 	my @content = content(@part[0]);
 	my $part = absoluteDecode(@part[1],@content);
@@ -115,7 +129,8 @@ sub content
 	my($part) = @_;
 	my $charset = stringCollect($part,'charset="?([a-zA-Z0-9\-]*)"?');
 	my $encoding = stringCollect($part,'encoding:\s?(.*)');
-	my $filename = stringCollect($part,'filename="?(.*[^"])"?');
+	my $filename = stringCollect($part,'filename="?([\w\s\.\=\?\-\]\[\`\(\)\'\%\@]*)"?');
+	if(!$filename){$filename = stringCollect($part,'name="?([\w\s\.\=\?\-\]\[\`\(\)\'\%\@]*)"?');}
 	return ($charset,$encoding,$filename);
 }
 
@@ -136,7 +151,7 @@ sub getBoundary
 	@boundary = ($buf =~ m/[\t\s]+boundary="(.*)"/gi);
 
 	foreach $boundary(@boundary){
-		$boundary="--".quotemeta($boundary);
+		$boundary="--".quotemeta($boundary)."";
 	}
 	$boundary = join '|',@boundary;
 	if(!$boundary){return;}
@@ -258,8 +273,7 @@ sub cropGarbage
 sub saveFile{
 	my ($filename,$document) = @_;
 
-	$folder =~ s/\.eml/_eml/gi;
-	mkdir $folder;
+
 
 	my $sfh = new IO::File ">"."$folder/$filename" or die "Cannot open $filename : $!";
 	flock($sfh,LOCK_EX);
