@@ -28,6 +28,5 @@ I have not found any unpacker EML-files, which would correctly cope with all thi
 
 in some cases, in eml files encountered winmail.dat that contains attachments and text. I did not write my "bike" for this case, since this task perfectly copes application tnef.
 
-
 ***uses several CPAN modules for execution perl script(emlExtractor.pl) will probably need: MIME::QuotedPrint::Perl
 for compiling an executable file - PAR::Packer
