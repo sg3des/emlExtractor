@@ -1,9 +1,10 @@
 #emlExtractor
 
 Extractor email files in eml format.
-	- extract header: subject, from, to, cc, date
-	- email text in plain text and html formats
-	- attachments
+
+    - extract header: subject, from, to, cc, date
+    - email text in plain text and html formats
+    - attachments
 
 emlExtractor written in perl for linux.
 	
