@@ -18,17 +18,46 @@ no warnings 'layer';
 
 my $folder;
 
-print "\n";
+$help = "
+USAGE: 
+
+/path/to/emlExtractor [option] filename.eml [[option] filename.eml [option] filename.eml ...]
+
+You can unpack multiple EML files in one line, just write them separated by a space.
+For each file eml, will be created directory kind filename_eml with same path, where will be unpacked files.
+
+You may set output directory with option:
+  -o  --output 		set output directory
+
+set output directory for each file, or one at all, or any other way.
+
+	eml.header - information header of email message
+	text.text  - text message in plain text format
+	html.html  - text message in html format
+";
+
+
+if(!@ARGV){print $help;}
+if(@ARGV[0]=~/--help|-h|\?/){print $help; exit;}
+
+my $arguments = 0;
 foreach $filePath(@ARGV){
-	openEml($filePath);
+	# print " - ".$filePath." -";
+	if($filePath=~/--help|-h|\?/){print $help; next;}
+	if($filePath=~/-o|--output/){$folder = @ARGV[$arguments+1]; mkdir $folder; next;}
+	if($filePath){openEml($filePath);}
+	$arguments++;
 }
 
 sub openEml
 {
 	my($path) = @_;
-	$folder = $path;
-	$folder =~ s/\.eml/_eml/gi;
-	mkdir $folder;
+	if(!$folder){
+		$folder = $path;
+		$folder =~ s/\.eml/_eml/i;
+		mkdir $folder;
+	}
+	
 
 	print color 'bold green';	print $path."\n";	print color 'reset';
 	my $fh = new IO::File "< $path" or die "Cannot open $path : $!";
@@ -129,8 +158,8 @@ sub content
 	my($part) = @_;
 	my $charset = stringCollect($part,'charset="?([a-zA-Z0-9\-]*)"?');
 	my $encoding = stringCollect($part,'encoding:\s?(.*)');
-	my $filename = stringCollect($part,'filename="?([\w\s\.\=\?\-\]\[\`\(\)\'\%\@]*)"?');
-	if(!$filename){$filename = stringCollect($part,'name="?([\w\s\.\=\?\-\]\[\`\(\)\'\%\@]*)"?');}
+	my $filename = stringCollect($part,'filename="?([\w\s\.\,\=\?\-\]\[\`\(\)\'\%\@]*)"?');
+	if(!$filename){$filename = stringCollect($part,'name="?([\w\s\.\,\=\?\-\]\[\`\(\)\'\%\@]*)"?');}
 	return ($charset,$encoding,$filename);
 }
 
@@ -274,7 +303,7 @@ sub saveFile{
 	my ($filename,$document) = @_;
 
 
-
+	$filename = lc $filename;
 	my $sfh = new IO::File ">"."$folder/$filename" or die "Cannot open $filename : $!";
 	flock($sfh,LOCK_EX);
 	binmode($sfh);
@@ -284,3 +313,5 @@ sub saveFile{
 	print $filename."\n";
 	return '$filename OK';
 }
+
+print "\n";

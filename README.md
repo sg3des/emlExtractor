@@ -1,38 +1,33 @@
 #emlExtractor
 
-Распаковщик eml файлов, написан на perl под linux.
+Extractor email files in eml format.
+	- extract header: subject, from, to, cc, date
+	- email text in plain text and html formats
+	- attachments
+
+emlExtractor written in perl for linux.
 	
 ##USAGE:
 
-запускаем emlExtractor и через пробел eml файлы которые надо распаковать, в итоге получает вывод того что удалось распаковать.
+/path/to/script/emlExtactor emailfile.eml
 
-	$ emlExtractor path/to/email.eml path/to/email.eml path/to/email.eml*Nраз
-	
-для каждого eml файла будет создана директория куда упадут распакованные файлы.
+You can unpack multiple EML files in one line, just write them separated by a space
+
+For each file eml, will be created directory kind filename_eml with same path, where will be unpacked files.
+
+You may set output directory with option:
+  -o  --output 		set output directory
 
 
 ##PREMISE
 
-я не нашел ни одного распаковщика EML-файлов, которые корректно бы справлялись со своей задачей, самая большая проблема это binary вложения.
-
-##WARNING!!!
-
-eml формат, это ужасный формат, каждый его создает как хочет, поэтому грамотно и красиво распарсить его очень тяжело, на данный момент emlExtractor содержит тот функционал который решает те задачи которые стояли передо мной, велика вероятность, что вы встретите другой способ формирования eml файла, с которым emlExtractor не справится!
-это пре пре пре альфа версия, в ней много слабых мест, г**-кода и т.д. НО думаю при должном желании вы сможете допилить функционал под себя.
-
-Все это поставляется как есть, и не факт что что-то буду доделывать.
+eml files this is format email messages, BUT not all server form its same.
+I have not found any unpacker EML-files, which would correctly cope with all this "exotic", the biggest surprise - attachments in binary view ... 
 
 ##INFORMATION
 
-в некоторых случаях, в eml письмах встречаются winmail.dat который содержит вложения и текст, я не стал писать свой велосипед на этот случай, так как с этой задачей прекрасно справляется приложение tnef.
+in some cases, in eml files encountered winmail.dat that contains attachments and text. I did not write my "bike" for this case, since this task perfectly copes application tnef.
 
-используется ряд CPAN модулей:
 
-	use MIME::Base64;
-	use IO::File;
-	use Fcntl qw(:flock);
-	use Encode qw(decode encode);
-	use Convert::TNEF;
-	use Term::ANSIColor;
-	use MIME::QuotedPrint::Perl;
-	use File::Basename;
+***uses several CPAN modules for execution perl script(emlExtractor.pl) will probably need: MIME::QuotedPrint::Perl
+for compiling an executable file - PAR::Packer
