@@ -17,7 +17,8 @@ You can unpack multiple EML files in one line, just write them separated by a sp
 For each file eml, will be created directory kind filename_eml with same path, where will be unpacked files.
 
 You may set output directory with option:
->-o  --output 		set output directory
+
+    -o  --output 		set output directory
 
 
 ##PREMISE
