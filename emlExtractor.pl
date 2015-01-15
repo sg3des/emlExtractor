@@ -179,9 +179,11 @@ sub content
 	my $encoding = stringCollect($part,'encoding:\s?(.*)');
 	my $filename = stringCollect($part,'filename="?([\w\s\.\,\=\?\-\]\[\`\(\)\'\%\@]*)"?');
 	if(!$filename){$filename = stringCollect($part,'name="?([\w\s\.\,\=\?\-\]\[\`\(\)\'\%\@]*)"?');}
-	if($ilename !~ m/\.[\w]?$/i){
+	if($filename !~ m/[\w]\.[\w]/i){
+		# print $filename;
 		$extension = stringCollect($part, 'content-type:\s?[\w]*\/([\w]*);?\s?');
 		$filename = $filename.'.'.$extension;
+		# print $filename;
 	}
 	return ($charset,$encoding,$filename);
 }
