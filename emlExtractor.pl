@@ -17,6 +17,11 @@ use File::Basename;
 no warnings 'layer';
 
 my $folder;
+my $contentNameByEml = 0;
+my $emlFilename;
+my $overwrite = 0;
+
+my @childs;
 
 $help = "
 USAGE: 
@@ -27,13 +32,16 @@ You can unpack multiple EML files in one line, just write them separated by a sp
 For each file eml, will be created directory kind filename_eml with same path, where will be unpacked files.
 
 You may set output directory with option:
-  -o  --output 		set output directory
+  -o  --output      set output directory
+  -c                set filename for html and text message as the same of filename input eml
+  -v  --overwrite   overwrite exists files
 
 set output directory for each file, or one at all, or any other way.
 
 	eml.header - information header of email message
-	text.text  - text message in plain text format
-	html.html  - text message in html format
+	*.text  - text message in plain text format
+	*.html  - text message in html format
+
 ";
 
 
@@ -44,7 +52,9 @@ my $arguments = 0;
 foreach $filePath(@ARGV){
 	# print " - ".$filePath." -";
 	if($filePath=~/--help|-h|\?/){print $help; next;}
-	if($filePath=~/-o|--output/){$folder = @ARGV[$arguments+1]; mkdir $folder; next;}
+	if($filePath=~/-o|--output/)          {$folder = @ARGV[$arguments+1]; mkdir $folder; next;}
+	if($filePath=~/-c/){$contentNameByEml = 1; next;}
+	if($filePath=~/-v|--overwrite/){$overwrite = 1; next;}
 	if($filePath){openEml($filePath);}
 	$arguments++;
 }
@@ -57,9 +67,15 @@ sub openEml
 		$folder =~ s/\.eml/_eml/i;
 		mkdir $folder;
 	}
+
+	$emlFilename = basename($path);
+	$emlFilename =~ s/\..*//i;
 	
 
-	print color 'bold green';	print $path."\n";	print color 'reset';
+	print color 'bold green';	
+	print "\n  input:  $path\n";
+	print "  output: $folder\n\n";
+	print color 'reset';
 	my $fh = new IO::File "< $path" or die "Cannot open $path : $!";
 	flock($fh,LOCK_SH);
 	binmode($fh);
@@ -96,6 +112,7 @@ sub explode
 sub header
 {
 	my($part) = @_;
+	# print($part);
 	$header .= "From: ".headerField($part,'from')."\n";
 	$header .= "To: ".headerField($part,'to')."\n";
 	$header .= "CC: ".headerField($part,'cc')."\n";
@@ -115,6 +132,8 @@ sub mailText
 
 	if($type eq 'html'){$part =~ s/@content[0]/utf-8/gi;}
 	my $filename = $type.".".$type;
+
+	if($contentNameByEml){$filename = $emlFilename.".".$type;}
 	saveFile($filename,$part);
 }
 
@@ -160,6 +179,10 @@ sub content
 	my $encoding = stringCollect($part,'encoding:\s?(.*)');
 	my $filename = stringCollect($part,'filename="?([\w\s\.\,\=\?\-\]\[\`\(\)\'\%\@]*)"?');
 	if(!$filename){$filename = stringCollect($part,'name="?([\w\s\.\,\=\?\-\]\[\`\(\)\'\%\@]*)"?');}
+	if($ilename !~ m/\.[\w]?$/i){
+		$extension = stringCollect($part, 'content-type:\s?[\w]*\/([\w]*);?\s?');
+		$filename = $filename.'.'.$extension;
+	}
 	return ($charset,$encoding,$filename);
 }
 
@@ -299,11 +322,23 @@ sub cropGarbage
 	return $part;
 }
 
+my $stepOverwriteFilename;
+
 sub saveFile{
 	my ($filename,$document) = @_;
 
+	my $filename = lc $filename;
+	my $suffix = '';
+	if(grep(/^$filename/, @childs)){
+		if(!$suffix){$suffix = 1;}
+		else{$suffix++;}
+	}
 
-	$filename = lc $filename;
+
+	$filename = $suffix.$filename;
+
+	
+	if(!$overwrite){$filename = getFilename($filename);}
 	my $sfh = new IO::File ">"."$folder/$filename" or die "Cannot open $filename : $!";
 	flock($sfh,LOCK_EX);
 	binmode($sfh);
@@ -311,7 +346,19 @@ sub saveFile{
 	close($sfh) or die "Error closing $filename : $!";
 
 	print $filename."\n";
+	push(@childs,$filename);
+
 	return '$filename OK';
+}
+
+sub getFilename{
+	my ($filename) = @_;
+	$stepFilename = '';
+	while (-e "$folder/$stepFilename$filename") {
+		if($stepFilename==''){$stepFilename=0;}
+		$stepFilename++;
+	}
+	return $stepFilename.$filename;
 }
 
 print "\n";
