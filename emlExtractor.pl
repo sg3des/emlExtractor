@@ -94,13 +94,14 @@ sub explode
 {
 	my($buf, $boundary) = @_;
 	my $step=0;
-	# print $boundary."\n";
+	print $boundary."\n";
 	foreach $part (split /$boundary/i, $buf){
-		# print $part."\n";
+		# print substr($part,0,10000)."\n";
 		$step++;
 		if($step==1){header($part);  next;}
 		if($part =~ m/(text\/plain)/mgi){mailText($part,'text'); next;}
 		if($part =~ m/(text\/html)/mgi){mailText($part,'html'); next;}
+
 		if($part =~ m/(filename)/mgi){attachment($part); next;}
 		if($part =~ m/(attachment)/mgi){attachment($part); next;}
 		if($part =~ m/(description)/mgi){attachment($part); next;}
@@ -144,6 +145,7 @@ sub attachment
 	my @content = content(@part[0]);
 	if(@content){$text = absoluteDecode(@part[1],@content);}
 	else{$text = @part[1];}
+	print "  > ".@content[2];
 	saveFile(@content[2],$text);
 	return;
 }
@@ -202,7 +204,7 @@ sub absoluteDecode
 sub getBoundary
 {
 	my($buf) = @_;
-	@boundary = ($buf =~ m/[\t\s]+boundary="(.*)"/gi);
+	@boundary = ($buf =~ m/[\t\s]+boundary="(.*?)"/gi);
 
 	foreach $boundary(@boundary){
 		$boundary="--".quotemeta($boundary)."";
