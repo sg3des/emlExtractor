@@ -26,17 +26,17 @@ my @childs;
 $help = "
 USAGE: 
 
-/path/to/emlExtractor [option] filename.eml [[option] filename.eml [option] filename.eml ...]
+/path/to/emlExtractor [options] filename.eml [[options] filename.eml [options] filename.eml ...]
 
 You can unpack multiple EML files in one line, just write them separated by a space.
 For each file eml, will be created directory kind filename_eml with same path, where will be unpacked files.
 
-You may set output directory with option:
-  -o  --output      set output directory
+Options:
+  -o  --output      set output directory*
   -c                set filename for html and text message as the same of filename input eml
   -v  --overwrite   overwrite exists files
 
-set output directory for each file, or one at all, or any other way.
+*You may set output directory for each file, or one at all, or any other way.
 
 	eml.header - information header of email message
 	*.text  - text message in plain text format
@@ -179,7 +179,7 @@ sub content
 	my $encoding = stringCollect($part,'encoding:\s?(.*)');
 	my $filename = stringCollect($part,'filename="?([\w\s\.\,\=\?\-\]\[\`\(\)\'\%\@]*)"?');
 	if(!$filename){$filename = stringCollect($part,'name="?([\w\s\.\,\=\?\-\]\[\`\(\)\'\%\@]*)"?');}
-	if($filename !~ m/[\w]\.[\w]/i){
+	if($filename !~ m/.\.[\w]/i){
 		# print $filename;
 		$extension = stringCollect($part, 'content-type:\s?[\w]*\/([\w]*);?\s?');
 		$filename = $filename.'.'.$extension;
@@ -325,20 +325,44 @@ sub cropGarbage
 }
 
 my $stepOverwriteFilename;
+my @files;
 
 sub saveFile{
 	my ($filename,$document) = @_;
-
 	my $filename = lc $filename;
-	my $suffix = '';
-	if(grep(/^$filename/, @childs)){
-		if(!$suffix){$suffix = 1;}
-		else{$suffix++;}
+
+	# push(@files,$filename);
+	my $suffix = 0;
+	for (my $var = 0; $var < scalar @files; $var++) {
+		if($files[$var] eq $filename){
+			$suffix++;
+		}
 	}
+	push(@files,$filename); 
+	if($suffix){ 
+		$filename = "(".$suffix.")".$filename;
+	}
+	
 
+	# if(!$files{$filename}){
+	# 	$files{$filename} = 0;
+	# }else{
+	# 	print "  > ".$filename;
+	# 	$files{$filename}++;
+	# }
 
-	$filename = $suffix.$filename;
+	# print "  > ";
+	# print $filename." ";
+	# print scalar @files;
+	# print "\n";
 
+	# my $suffix = '';
+	# if(grep(/^$filename/, @childs)){
+	# 	if(!$suffix){$suffix = 1;}
+	# 	else{$suffix++;}
+	# }
+
+	# $filename = $suffix.$filename;
 	
 	if(!$overwrite){$filename = getFilename($filename);}
 	my $sfh = new IO::File ">"."$folder/$filename" or die "Cannot open $filename : $!";
